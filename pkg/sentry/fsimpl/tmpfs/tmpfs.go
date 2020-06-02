@@ -207,18 +207,27 @@ func (d *dentry) DecRef() {
 }
 
 // InotifyWithParent implements vfs.DentryImpl.InotifyWithParent.
-func (d *dentry) InotifyWithParent(events uint32, cookie uint32, et vfs.EventType) {
+func (d *dentry) InotifyWithParent(events, cookie uint32, et vfs.EventType) {
 	if d.inode.isDir() {
 		events |= linux.IN_ISDIR
 	}
 
 	// The ordering below is important, Linux always notifies the parent first.
+	//
+	// Note that d.parent, d.name, and d.unlinked may be stale if there is a
+	// concurrent rename operation. Inotify does not provide consistency
+	// guarantees.
+	parent := d.parent
+	unlinked := d.unlinked
 	if d.parent != nil {
-		// Note that d.parent or d.name may be stale if there is a concurrent
-		// rename operation. Inotify does not provide consistency guarantees.
-		d.parent.inode.watches.NotifyWithExclusions(d.name, events, cookie, et, d.unlinked)
+		parent.inode.watches.Notify(d.name, events, cookie, et, unlinked)
 	}
-	d.inode.watches.Notify("", events, cookie, et)
+	d.inode.watches.Notify("", events, cookie, et, unlinked)
+}
+
+// RemoveWatch implements vfs.DentryImpl.RemoveWatch.
+func (d *dentry) RemoveWatch(id uint64) {
+	d.inode.watches.Remove(id)
 }
 
 // Watches implements vfs.DentryImpl.Watches.
