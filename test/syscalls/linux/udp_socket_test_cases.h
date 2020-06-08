@@ -15,8 +15,11 @@
 #ifndef THIRD_PARTY_GOLANG_GVISOR_TEST_SYSCALLS_LINUX_SOCKET_IPV4_UDP_UNBOUND_H_
 #define THIRD_PARTY_GOLANG_GVISOR_TEST_SYSCALLS_LINUX_SOCKET_IPV4_UDP_UNBOUND_H_
 
+#include <sys/socket.h>
+
 #include "gtest/gtest.h"
 #include "test/syscalls/linux/socket_test_util.h"
+#include "test/util/file_descriptor.h"
 
 namespace gvisor {
 namespace testing {
@@ -32,42 +35,49 @@ class UdpSocketTest
   // Creates two sockets that will be used by test cases.
   void SetUp() override;
 
-  // Closes the sockets created by SetUp().
-  void TearDown() override {
-    EXPECT_THAT(close(s_), SyscallSucceeds());
-    EXPECT_THAT(close(t_), SyscallSucceeds());
+  // Binds the socket bind_ to the loopback and updates bind_addr_.
+  void BindLoopback();
 
-    for (size_t i = 0; i < ABSL_ARRAYSIZE(ports_); ++i) {
-      ASSERT_NO_ERRNO(FreeAvailablePort(ports_[i]));
-    }
-  }
+  // Binds the socket bind_ to Any and updates bind_addr_.
+  void BindAny();
 
-  // First UDP socket.
-  int s_;
+  // Binds given socket to address addr and updates.
+  void BindSocket(int socket, struct sockaddr* addr);
 
-  // Second UDP socket.
-  int t_;
+  // Initialize given addr_storage to Loopback port 0.
+  struct sockaddr* InitializeLoopback(struct sockaddr_storage* addr_storage);
 
-  // The length of the socket address.
-  socklen_t addrlen_;
+  // Initialize addr_storage to Any address port 0.
+  struct sockaddr* InitializeAny(struct sockaddr_storage* addr_storage);
 
-  // Initialized address pointing to loopback and port TestPort+i.
-  struct sockaddr* addr_[3];
+  // Disconnects socket sockfd.
+  void Disconnect(int sockfd);
 
-  // Initialize "any" address.
+  // Type of this test.
+  int type_;
+
+  // Socket used by Bind methods
+  FileDescriptor bind_;
+
+  // Address for bind_ socket.
+  struct sockaddr* bind_addr_;
+
+  // Initialized Any address.
   struct sockaddr* anyaddr_;
 
-  // Used ports.
-  int ports_[3];
+  // Initialized to the anyaddr length
+  socklen_t addrlen_;
+
+  // Storage for bind_addr_
+  struct sockaddr_storage bind_addr_storage_;
 
  private:
-  // Storage for the loopback addresses.
-  struct sockaddr_storage addr_storage_[3];
-
   // Storage for the "any" address.
   struct sockaddr_storage anyaddr_storage_;
-};
 
+  // Helper to initialize addrlen_ for the test case.
+  socklen_t GetAddrLength();
+};
 }  // namespace testing
 }  // namespace gvisor
 
