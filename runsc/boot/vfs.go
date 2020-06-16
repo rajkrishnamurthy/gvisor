@@ -29,6 +29,7 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/fs/user"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/devpts"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/devtmpfs"
+	"gvisor.dev/gvisor/pkg/sentry/fsimpl/fuse"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/gofer"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/overlay"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/proc"
@@ -75,6 +76,10 @@ func registerFilesystems(ctx context.Context, vfsObj *vfs.VirtualFilesystem, cre
 	if err := memdev.Register(vfsObj); err != nil {
 		return fmt.Errorf("registering memdev: %w", err)
 	}
+	if err := fuse.RegisterDevice(vfsObj); err != nil {
+		return fmt.Errorf("registering miscdev: %w", err)
+	}
+
 	a, err := devtmpfs.NewAccessor(ctx, vfsObj, creds, devtmpfs.Name)
 	if err != nil {
 		return fmt.Errorf("creating devtmpfs accessor: %w", err)
@@ -85,8 +90,12 @@ func registerFilesystems(ctx context.Context, vfsObj *vfs.VirtualFilesystem, cre
 		return fmt.Errorf("initializing userspace: %w", err)
 	}
 	if err := memdev.CreateDevtmpfsFiles(ctx, a); err != nil {
-		return fmt.Errorf("creating devtmpfs files: %w", err)
+		return fmt.Errorf("creating devtmpfs mem device files: %w", err)
 	}
+	if err := fuse.CreateDevtmpfsFile(ctx, a); err != nil {
+		return fmt.Errorf("creating devtmpfs misc device files: %w", err)
+	}
+
 	return nil
 }
 
