@@ -111,9 +111,8 @@ func DefaultTables() *IPTables {
 			Prerouting: []string{TablenameMangle, TablenameNat},
 			Output:     []string{TablenameMangle, TablenameNat, TablenameFilter},
 		},
-		connections: ConnTrackTable{
-			CtMap: make(map[uint32]ConnTrackTupleHolder),
-			Seed:  generateRandUint32(),
+		connections: ConnTrack{
+			conns: make(map[connID]tuple),
 		},
 	}
 }
