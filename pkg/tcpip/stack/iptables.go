@@ -16,6 +16,7 @@ package stack
 
 import (
 	"fmt"
+	"time"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -46,7 +47,7 @@ const HookUnset = -1
 func DefaultTables() *IPTables {
 	// TODO(gvisor.dev/issue/170): We may be able to swap out some strings for
 	// iotas.
-	return &IPTables{
+	ipt := IPTables{
 		tables: map[string]Table{
 			TablenameNat: Table{
 				Rules: []Rule{
@@ -111,11 +112,27 @@ func DefaultTables() *IPTables {
 			Prerouting: []string{TablenameMangle, TablenameNat},
 			Output:     []string{TablenameMangle, TablenameNat, TablenameFilter},
 		},
-		connections: ConnTrackTable{
-			CtMap: make(map[uint32]ConnTrackTupleHolder),
-			Seed:  generateRandUint32(),
+		connections: ConnTrack{
+			conns: make(map[connID]tuple),
 		},
+		garbageCollectorDone: make(chan struct{}),
 	}
+
+	// This goroutine wakes up periodically to garbage collect any timed out
+	// connections.
+	go func() {
+		const period = 2 * time.Minute
+		for {
+			select {
+			case <-ipt.garbageCollectorDone:
+				return
+			case <-time.After(period):
+				ipt.connections.collectGarbage()
+			}
+		}
+	}()
+
+	return &ipt
 }
 
 // EmptyFilterTable returns a Table with no rules and the filter table chains
@@ -195,6 +212,16 @@ const (
 	// or the underflow rule of a builtin chain.
 	chainReturn
 )
+
+// StopGarbageCollector stops the goroutine that periodically reaps dead
+// connections. It can be called to prevent otherwise unused IPTables structs
+// (and the goroutine) from leaking. Subsequent calls to StopGarbageCollector
+// are no-ops.
+func (it *IPTables) StopGarbageCollector() {
+	it.once.Do(func() {
+		close(it.garbageCollectorDone)
+	})
+}
 
 // Check runs pkt through the rules for hook. It returns true when the packet
 // should continue traversing the network stack and false when it should be

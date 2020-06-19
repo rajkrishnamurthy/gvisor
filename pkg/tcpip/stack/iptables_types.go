@@ -96,7 +96,15 @@ type IPTables struct {
 	// don't utilize iptables.
 	modified bool
 
-	connections ConnTrackTable
+	connections ConnTrack
+
+	// once prevents garbageCollectorDone from being signalled more than
+	// once.
+	once sync.Once
+
+	// garbageCollectorDone can be signalled to stop the garbage collector
+	// goroutine.
+	garbageCollectorDone chan struct{}
 }
 
 // A Table defines a set of chains and hooks into the network stack. It is
@@ -249,5 +257,5 @@ type Target interface {
 	// Action takes an action on the packet and returns a verdict on how
 	// traversal should (or should not) continue. If the return value is
 	// Jump, it also returns the index of the rule to jump to.
-	Action(packet *PacketBuffer, connections *ConnTrackTable, hook Hook, gso *GSO, r *Route, address tcpip.Address) (RuleVerdict, int)
+	Action(packet *PacketBuffer, connections *ConnTrack, hook Hook, gso *GSO, r *Route, address tcpip.Address) (RuleVerdict, int)
 }
