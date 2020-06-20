@@ -478,6 +478,7 @@ syscall_test(
 syscall_test(
     size = "medium",
     test = "//test/syscalls/linux:proc_test",
+    vfs2 = "True",
 )
 
 syscall_test(
@@ -497,6 +498,7 @@ syscall_test(
 
 syscall_test(
     test = "//test/syscalls/linux:proc_pid_uid_gid_map_test",
+    vfs2 = "True",
 )
 
 syscall_test(
