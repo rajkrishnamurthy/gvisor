@@ -336,6 +336,14 @@ func (vfs *VirtualFilesystem) MknodAt(ctx context.Context, creds *auth.Credentia
 		return syserror.EINVAL
 	}
 
+	// mknod(2) calls that attempt to create socket files and do NOT stem from
+	// bind(2) are not supported in gVisor because the user will not be able to
+	// bind or connect to the resultant socket. Prevents the creation of
+	// useless socket files.
+	if opts.Mode.FileType() == linux.S_IFSOCK && opts.Endpoint == nil {
+		return syserror.EOPNOTSUPP
+	}
+
 	rp := vfs.getResolvingPath(creds, pop)
 	for {
 		err := rp.mount.fs.impl.MknodAt(ctx, rp, *opts)
