@@ -26,6 +26,8 @@ import (
 	"gvisor.dev/gvisor/pkg/fspath"
 	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/sentry/devices/memdev"
+	"gvisor.dev/gvisor/pkg/sentry/devices/ttydev"
+	"gvisor.dev/gvisor/pkg/sentry/devices/tundev"
 	"gvisor.dev/gvisor/pkg/sentry/fs/user"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/devpts"
 	"gvisor.dev/gvisor/pkg/sentry/fsimpl/devtmpfs"
@@ -75,6 +77,12 @@ func registerFilesystems(ctx context.Context, vfsObj *vfs.VirtualFilesystem, cre
 	if err := memdev.Register(vfsObj); err != nil {
 		return fmt.Errorf("registering memdev: %w", err)
 	}
+	if err := ttydev.Register(vfsObj); err != nil {
+		return fmt.Errorf("registering ttydev: %w", err)
+	}
+	if err := tundev.Register(vfsObj); err != nil {
+		return fmt.Errorf("registering memdev: %v", err)
+	}
 	a, err := devtmpfs.NewAccessor(ctx, vfsObj, creds, devtmpfs.Name)
 	if err != nil {
 		return fmt.Errorf("creating devtmpfs accessor: %w", err)
@@ -86,6 +94,12 @@ func registerFilesystems(ctx context.Context, vfsObj *vfs.VirtualFilesystem, cre
 	}
 	if err := memdev.CreateDevtmpfsFiles(ctx, a); err != nil {
 		return fmt.Errorf("creating devtmpfs files: %w", err)
+	}
+	if err := ttydev.CreateDevtmpfsFiles(ctx, a); err != nil {
+		return fmt.Errorf("creating devtmpfs files: %w", err)
+	}
+	if err := tundev.CreateDevtmpfsFiles(ctx, a); err != nil {
+		return fmt.Errorf("creating devtmpfs files: %v", err)
 	}
 	return nil
 }

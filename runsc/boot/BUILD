@@ -40,6 +40,8 @@ go_library(
         "//pkg/sentry/arch:registers_go_proto",
         "//pkg/sentry/control",
         "//pkg/sentry/devices/memdev",
+        "//pkg/sentry/devices/ttydev",
+        "//pkg/sentry/devices/tundev",
         "//pkg/sentry/fdimport",
         "//pkg/sentry/fs",
         "//pkg/sentry/fs/dev",
